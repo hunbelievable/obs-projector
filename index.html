@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body, html { margin: 0; padding: 0; background: #222; color: white; font-family: sans-serif; overflow: hidden; height: 100%; }
+        video { width: 100%; height: 100%; object-fit: contain; background: black;}
+        
+        #controls { position: absolute; top: 10px; left: 10px; z-index: 10; display: flex; gap: 10px; }
+        select { padding: 10px; opacity: 0.8; }
+        button { padding: 10px; cursor: pointer; background: #007bff; color: white; border: none; font-weight: bold;}
+    </style>
+</head>
+<body>
+
+    <div id="controls">
+        <button id="initBtn">1. Grant Camera Access</button>
+        
+        <select id="cameraSelect" style="display:none;">
+            <option>2. Select Camera...</option>
+        </select>
+    </div>
+
+    <video id="vid" autoplay playsinline muted></video>
+
+<script>
+    const videoElement = document.getElementById('vid');
+    const cameraSelect = document.getElementById('cameraSelect');
+    const initBtn = document.getElementById('initBtn');
+
+    // STEP 1: Ask for permission first!
+    initBtn.onclick = async () => {
+        try {
+            // This forces the browser popup: "Allow index.html to use your camera?"
+            await navigator.mediaDevices.getUserMedia({ video: true });
+            
+            // Once allowed, we can now list devices with their proper names
+            getDevices();
+            
+            // UI Cleanup
+            initBtn.style.display = 'none';
+            cameraSelect.style.display = 'block';
+        } catch (err) {
+            alert("Error: You must allow camera access for this to work.\n\nCheck System Settings > Privacy > Camera.");
+            console.error(err);
+        }
+    };
+
+    function getDevices() {
+        navigator.mediaDevices.enumerateDevices().then(devices => {
+            // Clear existing options
+            cameraSelect.innerHTML = '<option>Select Camera...</option>';
+            
+            devices.forEach(device => {
+                if (device.kind === 'videoinput') {
+                    const option = document.createElement('option');
+                    option.value = device.deviceId;
+                    // Now we should see "FaceTime HD Camera" instead of just empty text
+                    option.text = device.label || `Camera ${cameraSelect.length}`; 
+                    cameraSelect.appendChild(option);
+                }
+            });
+        });
+    }
+
+    // STEP 2: Switch Camera on selection
+    cameraSelect.onchange = () => {
+        if (videoElement.srcObject) {
+            videoElement.srcObject.getTracks().forEach(track => track.stop());
+        }
+
+        const constraints = {
+            video: { deviceId: { exact: cameraSelect.value } }
+        };
+
+        navigator.mediaDevices.getUserMedia(constraints)
+            .then(stream => videoElement.srcObject = stream);
+    };
+</script>
+</body>
+</html>
